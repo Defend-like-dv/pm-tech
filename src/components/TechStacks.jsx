@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Database, AlertOctagon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Database, AlertOctagon, Eye, ThumbsUp } from 'lucide-react';
 import { techStacks } from '../data/techstacks';
 
 // --- INTERACTIVE SIMULATIONS FOR TECH STACKS ---
@@ -686,6 +686,106 @@ export default function TechStacks({ selectedStackId, onSelectStack }) {
   const [activeCategory, setActiveCategory] = useState('all');
   const [dbType, setDbType] = useState('sql');
 
+  // --- VIEWS & LIKES METRICS STATE ---
+  const [views, setViews] = useState(0);
+  const [likes, setLikes] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+
+  useEffect(() => {
+    if (!selectedStackId) return;
+
+    // Reset counts immediately on stack change
+    setViews(0);
+    setLikes(0);
+    
+    const hasLiked = localStorage.getItem(`pmtech_liked_${selectedStackId}`) === 'true';
+    setIsLiked(hasLiked);
+
+    // Call live API view increment
+    fetch(`/api/view?id=${selectedStackId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.fallback) {
+          // LocalStorage fallback
+          const storedViews = localStorage.getItem(`pmtech_views_${selectedStackId}`);
+          let currentViews = storedViews ? parseInt(storedViews) : 0;
+          currentViews += 1;
+          localStorage.setItem(`pmtech_views_${selectedStackId}`, currentViews);
+          setViews(currentViews);
+
+          const storedLikes = localStorage.getItem(`pmtech_likes_${selectedStackId}`);
+          setLikes(storedLikes ? parseInt(storedLikes) : 0);
+        } else if (data.views) {
+          setViews(data.views);
+          // Fetch likes from metrics
+          fetch(`/api/metrics`)
+            .then(res => res.json())
+            .then(metrics => {
+              if (metrics[selectedStackId]) {
+                setLikes(metrics[selectedStackId].likes);
+              }
+            });
+        }
+      })
+      .catch(() => {
+        // Safe fallback in case of request block
+        const storedViews = localStorage.getItem(`pmtech_views_${selectedStackId}`);
+        let currentViews = storedViews ? parseInt(storedViews) : 0;
+        currentViews += 1;
+        localStorage.setItem(`pmtech_views_${selectedStackId}`, currentViews);
+        setViews(currentViews);
+
+        const storedLikes = localStorage.getItem(`pmtech_likes_${selectedStackId}`);
+        setLikes(storedLikes ? parseInt(storedLikes) : 0);
+      });
+  }, [selectedStackId]);
+
+  const handleLike = () => {
+    const nextLiked = !isLiked;
+    setIsLiked(nextLiked);
+
+    // Optimistically update counts in UI
+    setLikes(prev => nextLiked ? prev + 1 : prev - 1);
+
+    const actionType = nextLiked ? 'like' : 'unlike';
+
+    fetch(`/api/like?id=${selectedStackId}&action=${actionType}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.fallback) {
+          // LocalStorage fallback
+          const storedLikes = localStorage.getItem(`pmtech_likes_${selectedStackId}`);
+          let currentLikes = storedLikes ? parseInt(storedLikes) : 0;
+          
+          if (nextLiked) {
+            currentLikes += 1;
+          } else {
+            currentLikes = Math.max(0, currentLikes - 1);
+          }
+          localStorage.setItem(`pmtech_likes_${selectedStackId}`, currentLikes);
+          setLikes(currentLikes);
+          localStorage.setItem(`pmtech_liked_${selectedStackId}`, nextLiked ? 'true' : 'false');
+        } else if (data.likes) {
+          setLikes(data.likes);
+          localStorage.setItem(`pmtech_liked_${selectedStackId}`, nextLiked ? 'true' : 'false');
+        }
+      })
+      .catch(() => {
+        // Fallback
+        const storedLikes = localStorage.getItem(`pmtech_likes_${selectedStackId}`);
+        let currentLikes = storedLikes ? parseInt(storedLikes) : 0;
+        
+        if (nextLiked) {
+          currentLikes += 1;
+        } else {
+          currentLikes = Math.max(0, currentLikes - 1);
+        }
+        localStorage.setItem(`pmtech_likes_${selectedStackId}`, currentLikes);
+        setLikes(currentLikes);
+        localStorage.setItem(`pmtech_liked_${selectedStackId}`, nextLiked ? 'true' : 'false');
+      });
+  };
+
   // Find selected stack details
   const selectedStack = techStacks.find(c => c.id === selectedStackId);
 
@@ -721,13 +821,46 @@ export default function TechStacks({ selectedStackId, onSelectStack }) {
           Understanding the role, benefits, and core physical limitations of {selectedStack.name} in modern architectures.
         </p>
 
-        {/* Meta Row */}
-        <div className="article-header-meta" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px' }}>
-          <span className="badge badge-outline" style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>
-            {selectedStack.category}
-          </span>
-          <span>•</span>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>3 min read</span>
+        {/* Meta Row with Views & Likes */}
+        <div className="article-header-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span className="badge badge-outline" style={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>
+              {selectedStack.category}
+            </span>
+            <span>•</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>3 min read</span>
+          </div>
+
+          {/* Dynamic Views & Likes display */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <Eye size={15} />
+              <span>{views.toLocaleString()} views</span>
+            </div>
+
+            <button 
+              onClick={handleLike}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                color: isLiked ? 'var(--primary)' : 'var(--text-secondary)',
+                fontSize: '0.85rem',
+                fontWeight: isLiked ? '600' : '400',
+                padding: '4px 8px',
+                borderRadius: '99px',
+                backgroundColor: isLiked ? 'rgba(26, 137, 23, 0.08)' : 'transparent',
+                transition: 'all 0.15s ease',
+                outline: 'none'
+              }}
+            >
+              <ThumbsUp size={15} style={{ fill: isLiked ? 'var(--primary)' : 'none' }} />
+              <span>{likes.toLocaleString()} likes</span>
+            </button>
+          </div>
         </div>
 
         {/* Quick Facts Grid */}
