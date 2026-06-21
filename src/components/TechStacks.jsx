@@ -24,6 +24,14 @@ export default function TechStacks() {
       limit: "Static by nature. Building dynamic interfaces requires JavaScript to manage screen states."
     },
     {
+      id: "rendering",
+      name: "CSR vs SSR Rendering",
+      category: "frontend",
+      what: "Client-Side Rendering (browser runs JS to compile HTML) vs Server-Side Rendering (server compiles fully populated HTML first).",
+      why: "CSR creates fluid screen transitions without full page refreshes. SSR delivers instant initial load times and strong SEO indexing.",
+      limit: "CSR causes slow initial blank screens while loading bundles. SSR increases server CPU costs under high traffic spikes."
+    },
+    {
       id: "nodejs",
       name: "Node.js",
       category: "backend",
