@@ -682,9 +682,8 @@ function WebhookWidget() {
 
 // --- MAIN TECH STACKS COMPONENT ---
 
-export default function TechStacks() {
+export default function TechStacks({ selectedStackId, onSelectStack }) {
   const [activeCategory, setActiveCategory] = useState('all');
-  const [selectedStackId, setSelectedStackId] = useState(null);
   const [dbType, setDbType] = useState('sql');
 
   // Find selected stack details
@@ -707,7 +706,7 @@ export default function TechStacks() {
       <div className="fade-in article-container" style={{ textAlign: 'left' }}>
         {/* Back Button */}
         <button 
-          onClick={() => setSelectedStackId(null)} 
+          onClick={() => onSelectStack(null)} 
           className="back-button"
           style={{ marginBottom: '24px' }}
         >
@@ -927,7 +926,7 @@ export default function TechStacks() {
         {filteredComponents.map((comp) => (
           <div 
             key={comp.id}
-            onClick={() => setSelectedStackId(comp.id)}
+            onClick={() => onSelectStack(comp.id)}
             style={{
               border: '1px solid var(--border-color)',
               borderRadius: '12px',

@@ -21,18 +21,52 @@ import TechStacks from './components/TechStacks';
 import Glossary from './components/Glossary';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('casestudies'); // 'casestudies', 'techstacks', 'glossary'
-  const [selectedArticleId, setSelectedArticleId] = useState(null);
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'casestudies';
+  });
+  const [selectedArticleId, setSelectedArticleId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('article') || null;
+  });
+  const [selectedStackId, setSelectedStackId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('stack') || null;
+  });
   
   // Theme state
   const [theme, setTheme] = useState('light');
   // Mobile menu drawer state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Helper to synchronize state with URL query parameters
+  const syncUrl = (tab, article, stack) => {
+    const params = new URLSearchParams();
+    if (tab) params.set('tab', tab);
+    if (article) params.set('article', article);
+    if (stack) params.set('stack', stack);
+    
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({ tab, article, stack }, '', newUrl);
+  };
+
   // Sync theme to body class
   useEffect(() => {
     document.body.className = theme;
   }, [theme]);
+
+  // Handle browser Back/Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setActiveTab(params.get('tab') || 'casestudies');
+      setSelectedArticleId(params.get('article') || null);
+      setSelectedStackId(params.get('stack') || null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -41,13 +75,17 @@ export default function App() {
   const handleLogoClick = () => {
     setActiveTab('casestudies');
     setSelectedArticleId(null);
+    setSelectedStackId(null);
     setMobileMenuOpen(false);
+    syncUrl('casestudies', null, null);
   };
 
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);
     setSelectedArticleId(null); 
+    setSelectedStackId(null);
     setMobileMenuOpen(false);
+    syncUrl(tabId, null, null);
   };
 
   return (
@@ -168,17 +206,32 @@ export default function App() {
             selectedArticleId ? (
               <ArticleView 
                 articleId={selectedArticleId} 
-                onBack={() => setSelectedArticleId(null)} 
+                onBack={() => {
+                  setSelectedArticleId(null);
+                  syncUrl('casestudies', null, null);
+                }} 
               />
             ) : (
               <ArticleList 
                 filterType="casestudies" 
-                onSelectArticle={(id) => setSelectedArticleId(id)} 
+                onSelectArticle={(id) => {
+                  setSelectedArticleId(id);
+                  syncUrl('casestudies', id, null);
+                }} 
               />
             )
           )}
 
-          {activeTab === 'techstacks' && <TechStacks />}
+          {activeTab === 'techstacks' && (
+            <TechStacks 
+              selectedStackId={selectedStackId}
+              onSelectStack={(id) => {
+                setSelectedStackId(id);
+                syncUrl('techstacks', null, id);
+              }}
+            />
+          )}
+          
           {activeTab === 'glossary' && <Glossary />}
           
         </div>
