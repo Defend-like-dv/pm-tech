@@ -35,12 +35,12 @@ export default function ArticleView({ articleId, onBack }) {
   useEffect(() => {
     // Initial baselines for mock counts
     const baselines = {
-      maps: { views: 342, likes: 89 },
-      blinkit: { views: 512, likes: 142 },
-      fifa: { views: 289, likes: 67 }
+      maps: { views: 0, likes: 0 },
+      blinkit: { views: 0, likes: 0 },
+      fifa: { views: 0, likes: 0 }
     };
 
-    const base = baselines[articleId] || { views: 100, likes: 10 };
+    const base = baselines[articleId] || { views: 0, likes: 0 };
     
     // Set immediate defaults so the user sees a number instantly
     setViews(base.views);
@@ -102,8 +102,8 @@ export default function ArticleView({ articleId, onBack }) {
       .then(data => {
         if (data.fallback) {
           // LocalStorage fallback
-          const baselines = { maps: 89, blinkit: 142, fifa: 67 };
-          const baseLikes = baselines[articleId] || 10;
+          const baselines = { maps: 0, blinkit: 0, fifa: 0 };
+          const baseLikes = baselines[articleId] || 0;
           const storedLikes = localStorage.getItem(`pmtech_likes_${articleId}`);
           let currentLikes = storedLikes ? parseInt(storedLikes) : baseLikes;
           
@@ -122,8 +122,8 @@ export default function ArticleView({ articleId, onBack }) {
       })
       .catch(() => {
         // Fallback
-        const baselines = { maps: 89, blinkit: 142, fifa: 67 };
-        const baseLikes = baselines[articleId] || 10;
+        const baselines = { maps: 0, blinkit: 0, fifa: 0 };
+        const baseLikes = baselines[articleId] || 0;
         const storedLikes = localStorage.getItem(`pmtech_likes_${articleId}`);
         let currentLikes = storedLikes ? parseInt(storedLikes) : baseLikes;
         

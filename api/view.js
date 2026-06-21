@@ -17,7 +17,7 @@ export default async function handler(request, response) {
     const newViews = await kv.incr(`views:${id}`);
     
     // Baselines offsets to return correct totals
-    const baselines = { maps: 342, blinkit: 512, fifa: 289 };
+    const baselines = { maps: 0, blinkit: 0, fifa: 0 };
     const baseOffset = baselines[id] || 0;
 
     return response.status(200).json({ 

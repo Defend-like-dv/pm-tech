@@ -23,7 +23,7 @@ export default async function handler(request, response) {
       return response.status(400).json({ error: "Invalid action parameter" });
     }
 
-    const baselines = { maps: 89, blinkit: 142, fifa: 67 };
+    const baselines = { maps: 0, blinkit: 0, fifa: 0 };
     const baseOffset = baselines[id] || 0;
 
     return response.status(200).json({ 
