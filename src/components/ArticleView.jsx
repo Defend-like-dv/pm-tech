@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, Eye, Database, Navigation, ThumbsUp } from 'lucide-react';
+import { Clock, Eye, Database, Navigation, ThumbsUp } from 'lucide-react';
 import { articles } from '../data/articles';
 
 export default function ArticleView({ articleId, onBack }) {
@@ -24,12 +24,6 @@ export default function ArticleView({ articleId, onBack }) {
   const [trafficLevel, setTrafficLevel] = useState('medium');
   // FIFA Widget
   const [bandwidth, setBandwidth] = useState(8);
-  // Design Widgets (Not used anymore, but keeping defaults in case of references)
-  const [padding, setPadding] = useState(16);
-  const [margin, setMargin] = useState(16);
-  const [borderWidth, setBorderWidth] = useState(2);
-  const [hoverArea, setHoverArea] = useState(null);
-  const [rootSize, setRootSize] = useState(16);
   // Database Widget
   const [dbType, setDbType] = useState('sql');
 
@@ -47,37 +41,101 @@ export default function ArticleView({ articleId, onBack }) {
     };
 
     const base = baselines[articleId] || { views: 100, likes: 10 };
-
-    const storedViews = localStorage.getItem(`pmtech_views_${articleId}`);
-    const storedLikes = localStorage.getItem(`pmtech_likes_${articleId}`);
+    
+    // Set immediate defaults so the user sees a number instantly
+    setViews(base.views);
+    setLikes(base.likes);
+    
     const hasLiked = localStorage.getItem(`pmtech_liked_${articleId}`) === 'true';
-
-    let currentViews = storedViews ? parseInt(storedViews) : base.views;
-    let currentLikes = storedLikes ? parseInt(storedLikes) : base.likes;
-
-    // Increment view count on load
-    currentViews += 1;
-    localStorage.setItem(`pmtech_views_${articleId}`, currentViews);
-
-    setViews(currentViews);
-    setLikes(currentLikes);
     setIsLiked(hasLiked);
+
+    // Call live API view increment
+    fetch(`/api/view?id=${articleId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.fallback) {
+          // LocalStorage fallback
+          const storedViews = localStorage.getItem(`pmtech_views_${articleId}`);
+          let currentViews = storedViews ? parseInt(storedViews) : base.views;
+          currentViews += 1;
+          localStorage.setItem(`pmtech_views_${articleId}`, currentViews);
+          setViews(currentViews);
+
+          const storedLikes = localStorage.getItem(`pmtech_likes_${articleId}`);
+          setLikes(storedLikes ? parseInt(storedLikes) : base.likes);
+        } else if (data.views) {
+          setViews(data.views);
+          // Also fetch likes from metrics
+          fetch(`/api/metrics`)
+            .then(res => res.json())
+            .then(metrics => {
+              if (metrics[articleId]) {
+                setLikes(metrics[articleId].likes);
+              }
+            });
+        }
+      })
+      .catch(() => {
+        // Safe fallback in case of request block
+        const storedViews = localStorage.getItem(`pmtech_views_${articleId}`);
+        let currentViews = storedViews ? parseInt(storedViews) : base.views;
+        currentViews += 1;
+        localStorage.setItem(`pmtech_views_${articleId}`, currentViews);
+        setViews(currentViews);
+
+        const storedLikes = localStorage.getItem(`pmtech_likes_${articleId}`);
+        setLikes(storedLikes ? parseInt(storedLikes) : base.likes);
+      });
   }, [articleId]);
 
   const handleLike = () => {
-    let nextLikes = likes;
-    let nextLiked = !isLiked;
-
-    if (nextLiked) {
-      nextLikes += 1;
-    } else {
-      nextLikes -= 1;
-    }
-
-    setLikes(nextLikes);
+    const nextLiked = !isLiked;
     setIsLiked(nextLiked);
-    localStorage.setItem(`pmtech_likes_${articleId}`, nextLikes);
-    localStorage.setItem(`pmtech_liked_${articleId}`, nextLiked ? 'true' : 'false');
+
+    // Optimistically update counts in UI
+    setLikes(prev => nextLiked ? prev + 1 : prev - 1);
+
+    const actionType = nextLiked ? 'like' : 'unlike';
+
+    fetch(`/api/like?id=${articleId}&action=${actionType}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.fallback) {
+          // LocalStorage fallback
+          const baselines = { maps: 89, blinkit: 142, fifa: 67 };
+          const baseLikes = baselines[articleId] || 10;
+          const storedLikes = localStorage.getItem(`pmtech_likes_${articleId}`);
+          let currentLikes = storedLikes ? parseInt(storedLikes) : baseLikes;
+          
+          if (nextLiked) {
+            currentLikes += 1;
+          } else {
+            currentLikes = Math.max(0, currentLikes - 1);
+          }
+          localStorage.setItem(`pmtech_likes_${articleId}`, currentLikes);
+          setLikes(currentLikes);
+          localStorage.setItem(`pmtech_liked_${articleId}`, nextLiked ? 'true' : 'false');
+        } else if (data.likes) {
+          setLikes(data.likes);
+          localStorage.setItem(`pmtech_liked_${articleId}`, nextLiked ? 'true' : 'false');
+        }
+      })
+      .catch(() => {
+        // Fallback
+        const baselines = { maps: 89, blinkit: 142, fifa: 67 };
+        const baseLikes = baselines[articleId] || 10;
+        const storedLikes = localStorage.getItem(`pmtech_likes_${articleId}`);
+        let currentLikes = storedLikes ? parseInt(storedLikes) : baseLikes;
+        
+        if (nextLiked) {
+          currentLikes += 1;
+        } else {
+          currentLikes = Math.max(0, currentLikes - 1);
+        }
+        localStorage.setItem(`pmtech_likes_${articleId}`, currentLikes);
+        setLikes(currentLikes);
+        localStorage.setItem(`pmtech_liked_${articleId}`, nextLiked ? 'true' : 'false');
+      });
   };
 
   // --- CALCULATION HANDLERS ---
